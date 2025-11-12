@@ -16,7 +16,7 @@ bl_info = {
 def draw_callback_px(self, context):
     wm = context.window_manager
     sc = context.scene
-    if not wm.do_show_tags:
+    if not getattr(wm, "do_show_tags", False):
         return
     ob = context.object
     if not ob:
@@ -94,7 +94,6 @@ class GemlabDisplayTags(bpy.types.Operator):
     _handle = None
     _timer = None
 
-    @staticmethod
     def handle_add(self, context):
         GemlabDisplayTags._handle = bpy.types.SpaceView3D.draw_handler_add(
             draw_callback_px, (self, context), "WINDOW", "POST_PIXEL"
@@ -113,37 +112,38 @@ class GemlabDisplayTags(bpy.types.Operator):
         GemlabDisplayTags._handle = None
         GemlabDisplayTags._timer = None
 
-    def modal(self, context, event):
+    def modal(self, context, event):  # type: ignore
         # redraw
-        if context.area:
-            context.area.tag_redraw()
+        # if context.area:
+        # context.area.tag_redraw()
         # stop script
-        if not context.window_manager.do_show_tags:
+        if not getattr(context.window_manager, "do_show_tags", False):
             GemlabDisplayTags.handle_remove(context)
             return {"CANCELLED"}
         return {"PASS_THROUGH"}
 
-    def cancel(self, context):
-        if context.window_manager.do_show_tags:
+    def cancel(self, context):  # type: ignore
+        if getattr(context.window_manager, "do_show_tags", False):
             GemlabDisplayTags.handle_remove(context)
-            context.window_manager.do_show_tags = False
+            setattr(context.window_manager, "do_show_tags", False)
         return {"CANCELLED"}
 
-    def invoke(self, context, event):
+    def invoke(self, context, event):  # type: ignore
         if context.area.type == "VIEW_3D":
             # operator is called for the first time, start everything
-            if not context.window_manager.do_show_tags:
-                context.window_manager.do_show_tags = True
+            if not getattr(context.window_manager, "do_show_tags", False):
+                setattr(context.window_manager, "do_show_tags", True)
                 GemlabDisplayTags.handle_add(self, context)
                 return {"RUNNING_MODAL"}
             # operator is called again, stop displaying
             else:
-                context.window_manager.do_show_tags = False
+                setattr(context.window_manager, "do_show_tags", False)
                 return {"CANCELLED"}
         else:
             self.report({"WARNING"}, "View3D not found, can't run operator")
             return {"CANCELLED"}
 
+    @staticmethod
     def unregister():
         if bpy.context:
             GemlabDisplayTags.handle_remove(bpy.context)
@@ -492,7 +492,7 @@ class VIEW3D_PT_GemlabPanel(bpy.types.Panel):
         r.prop(sc, "gemlab_show_vtag")
         r.prop(sc, "gemlab_show_etag")
         r.prop(sc, "gemlab_show_ctag")
-        if not wm.do_show_tags:
+        if not getattr(wm, "do_show_tags", False):
             lo.operator("view3d.show_tags", text="Start display", icon="PLAY")
         else:
             lo.operator("view3d.show_tags", text="Stop display", icon="PAUSE")
