@@ -14,25 +14,33 @@ bl_info = {
 
 
 def draw_callback_px(self, context):
+    # check if we need to draw
     wm = context.window_manager
-    sc = context.scene
     if not getattr(wm, "do_show_tags", False):
         return
+
+    # get the object
     ob = context.object
     if not ob:
         return
     if not ob.type == "MESH":
         return
 
-    # status
+    # write status message
     font_id = 0
     blf.position(font_id, 45, 45, 0)
     blf.size(font_id, 15)
     blf.draw(font_id, "displaying tags")
 
-    # region
+    # get the region and region_3d
+    # Note, according to https://docs.blender.org/api/current/bpy_extras.view3d_utils.html:
+    #    r3d is a "3D region data, typically bpy.context.space_data.region_3d"
+    #    r3d is a RegionView3D(bpy_struct), see https://docs.blender.org/api/current/bpy.types.RegionView3D.html
     reg = bpy.context.region
-    r3d = bpy.context.space_data.region_3d
+    r3d = bpy.context.space_data.region_3d  # type: ignore
+
+    # get the scene
+    sc = context.scene
 
     # transformation matrix (local co => global co)
     T = ob.matrix_world.copy()
