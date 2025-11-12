@@ -545,3 +545,7 @@ def unregister():
     del bpy.types.Scene.gemlab_cell_color
     del bpy.types.Scene.gemlab_flatten
     del bpy.types.WindowManager.do_show_tags
+
+
+if __name__ == "__main__":
+    register()
