@@ -91,17 +91,14 @@ class GemlabDisplayTags(bpy.types.Operator):
     bl_label = "Show Tags"
     bl_description = "Display tags on top of mesh"
     _handle = None  # (static/global) will be assigned by invoke
-    _timer = None  # (static/global) will be assigned by invoke
 
     @staticmethod
     def handle_remove(context):
         if GemlabDisplayTags._handle is not None:
-            context.window_manager.event_timer_remove(GemlabDisplayTags._timer)
             bpy.types.SpaceView3D.draw_handler_remove(
                 GemlabDisplayTags._handle, "WINDOW"
             )
         GemlabDisplayTags._handle = None
-        GemlabDisplayTags._timer = None
 
     def modal(self, context, event):  # type: ignore
         # stop script
@@ -123,9 +120,6 @@ class GemlabDisplayTags(bpy.types.Operator):
                 setattr(context.window_manager, "do_show_tags", True)
                 GemlabDisplayTags._handle = bpy.types.SpaceView3D.draw_handler_add(
                     draw_callback_px, (self, context), "WINDOW", "POST_PIXEL"
-                )
-                GemlabDisplayTags._timer = context.window_manager.event_timer_add(
-                    time_step=0.075, window=context.window
                 )
                 context.area.tag_redraw()  # refresh
                 return {"RUNNING_MODAL"}
