@@ -168,7 +168,7 @@ class SetVertexTag(bpy.types.Operator):
         ob = context.object
         vids = [v.idx for v in ob.vtags.values()]
         for v in ob.data.vertices:
-            if v.select == True:  # vertex is selected
+            if v.select:  # vertex is selected
                 if v.index in vids:  # update
                     ob.vtags[vids.index(v.index)].tag = sc.gemlab_default_vert_tag
                 else:
@@ -198,7 +198,7 @@ class SetEdgeTag(bpy.types.Operator):
         ob = context.object
         ekeys = [(v.v0, v.v1) for v in ob.etags.values()]
         for e in ob.data.edges:
-            if e.select == True:  # edge is selected
+            if e.select:  # edge is selected
                 if e.key in ekeys:  # update
                     ob.etags[ekeys.index(e.key)].tag = sc.gemlab_default_edge_tag
                 else:
@@ -229,7 +229,7 @@ class SetCellTag(bpy.types.Operator):
         ob = context.object
         cids = [v.idx for v in ob.ctags.values()]
         for p in ob.data.polygons:
-            if p.select == True:  # polygon is selected
+            if p.select:  # polygon is selected
                 if p.index in cids:  # update
                     ob.ctags[cids.index(p.index)].tag = sc.gemlab_default_cell_tag
                 else:
@@ -243,7 +243,6 @@ class SetCellTag(bpy.types.Operator):
 def write_mesh_to_file(
     filepath, context, drawmesh=False, ids=False, tags=True, tol=0.0001, flatten=False
 ):
-    sc = context.scene
     ob = context.object
     me = ob.data
     T = ob.matrix_world.copy()
