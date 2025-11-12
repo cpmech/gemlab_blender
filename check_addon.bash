@@ -8,8 +8,6 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 import sys
 import traceback
 
-# Add the repo `src` directory to path so we can import the addon now that
-# this script is located at the repository root (not inside src/)
 sys.path.insert(0, '$SCRIPT_DIR/src')
 
 try:
