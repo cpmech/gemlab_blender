@@ -4,21 +4,25 @@ from bpy_extras import view3d_utils
 
 
 bl_info = {
-    'name'        : 'Gemlab',
-    'author'      : 'Dorival Pedroso',
-    'version'     : (0, 1, 0),
-    'blender'     : (4, 2, 0),
-    'description' : 'Tool to write Gemlab (and Tritet) input data files',
-    'category'    : '3D View'}
+    "name": "Gemlab",
+    "author": "Dorival Pedroso",
+    "version": (0, 1, 0),
+    "blender": (4, 2, 0),
+    "description": "Tool to write Gemlab (and Tritet) input data files",
+    "category": "3D View",
+}
 
 
 def draw_callback_px(self, context):
     wm = context.window_manager
     sc = context.scene
-    if not wm.do_show_tags: return
+    if not wm.do_show_tags:
+        return
     ob = context.object
-    if not ob: return
-    if not ob.type == 'MESH': return
+    if not ob:
+        return
+    if not ob.type == "MESH":
+        return
 
     # status
     font_id = 0
@@ -34,41 +38,44 @@ def draw_callback_px(self, context):
     T = ob.matrix_world.copy()
 
     # vertex tags
-    if len(ob.vtags)>0 and sc.gemlab_show_vtag:
+    if len(ob.vtags) > 0 and sc.gemlab_show_vtag:
         blf.size(font_id, sc.gemlab_vert_font)
         r, g, b = sc.gemlab_vert_color
         blf.color(font_id, r, g, b, 1.0)
         for v in ob.vtags.values():
-            if v.tag >= 0: continue
+            if v.tag >= 0:
+                continue
             pm = ob.data.vertices[v.idx].co
             co = view3d_utils.location_3d_to_region_2d(reg, r3d, T @ pm)
             if co:
                 blf.position(font_id, co[0], co[1], 0)
-                blf.draw(font_id, "%d"%v.tag)
+                blf.draw(font_id, "%d" % v.tag)
 
     # edge tags
-    if len(ob.etags)>0 and sc.gemlab_show_etag:
+    if len(ob.etags) > 0 and sc.gemlab_show_etag:
         blf.size(font_id, sc.gemlab_edge_font)
         r, g, b = sc.gemlab_edge_color
         blf.color(font_id, r, g, b, 1.0)
         for v in ob.etags.values():
-            if v.tag >= 0: continue
+            if v.tag >= 0:
+                continue
             pa = ob.data.vertices[v.v0].co
             pb = ob.data.vertices[v.v1].co
-            pm = (pa+pb)/2.0
+            pm = (pa + pb) / 2.0
             co = view3d_utils.location_3d_to_region_2d(reg, r3d, T @ pm)
             if co:
                 blf.position(font_id, co[0], co[1], 0)
-                blf.draw(font_id, "%d"%v.tag)
+                blf.draw(font_id, "%d" % v.tag)
 
     # cell tags
-    if len(ob.ctags)>0 and sc.gemlab_show_ctag:
+    if len(ob.ctags) > 0 and sc.gemlab_show_ctag:
         blf.size(font_id, sc.gemlab_cell_font)
         r, g, b = sc.gemlab_cell_color
         blf.color(font_id, r, g, b, 1.0)
         for v in ob.ctags.values():
-            if v.tag >= 0: continue
-            c  = ob.data.polygons[v.idx]
+            if v.tag >= 0:
+                continue
+            c = ob.data.polygons[v.idx]
             pm = ob.data.vertices[c.vertices[0]].co.copy()
             for k in range(1, len(c.vertices)):
                 pm += ob.data.vertices[c.vertices[k]].co
@@ -76,29 +83,35 @@ def draw_callback_px(self, context):
             co = view3d_utils.location_3d_to_region_2d(reg, r3d, T @ pm)
             if co:
                 blf.position(font_id, co[0], co[1], 0)
-                blf.draw(font_id, "%d"%v.tag)
+                blf.draw(font_id, "%d" % v.tag)
 
 
 class GemlabDisplayTags(bpy.types.Operator):
-    bl_idname      = "view3d.show_tags"
-    bl_label       = "Show Tags"
+    bl_idname = "view3d.show_tags"
+    bl_label = "Show Tags"
     bl_description = "Display tags on top of mesh"
-    last_activity  = 'NONE'
-    _handle        = None
-    _timer         = None
+    last_activity = "NONE"
+    _handle = None
+    _timer = None
 
     @staticmethod
     def handle_add(self, context):
-        GemlabDisplayTags._handle = bpy.types.SpaceView3D.draw_handler_add(draw_callback_px, (self, context), 'WINDOW', 'POST_PIXEL')
-        GemlabDisplayTags._timer  = context.window_manager.event_timer_add(time_step=0.075, window=context.window)
+        GemlabDisplayTags._handle = bpy.types.SpaceView3D.draw_handler_add(
+            draw_callback_px, (self, context), "WINDOW", "POST_PIXEL"
+        )
+        GemlabDisplayTags._timer = context.window_manager.event_timer_add(
+            time_step=0.075, window=context.window
+        )
 
     @staticmethod
     def handle_remove(context):
         if GemlabDisplayTags._handle is not None:
             context.window_manager.event_timer_remove(GemlabDisplayTags._timer)
-            bpy.types.SpaceView3D.draw_handler_remove(GemlabDisplayTags._handle, 'WINDOW')
+            bpy.types.SpaceView3D.draw_handler_remove(
+                GemlabDisplayTags._handle, "WINDOW"
+            )
         GemlabDisplayTags._handle = None
-        GemlabDisplayTags._timer  = None
+        GemlabDisplayTags._timer = None
 
     def modal(self, context, event):
         # redraw
@@ -107,29 +120,29 @@ class GemlabDisplayTags(bpy.types.Operator):
         # stop script
         if not context.window_manager.do_show_tags:
             GemlabDisplayTags.handle_remove(context)
-            return {'CANCELLED'}
-        return {'PASS_THROUGH'}
+            return {"CANCELLED"}
+        return {"PASS_THROUGH"}
 
     def cancel(self, context):
         if context.window_manager.do_show_tags:
             GemlabDisplayTags.handle_remove(context)
             context.window_manager.do_show_tags = False
-        return {'CANCELLED'}
+        return {"CANCELLED"}
 
     def invoke(self, context, event):
-        if context.area.type == 'VIEW_3D':
+        if context.area.type == "VIEW_3D":
             # operator is called for the first time, start everything
             if not context.window_manager.do_show_tags:
                 context.window_manager.do_show_tags = True
                 GemlabDisplayTags.handle_add(self, context)
-                return {'RUNNING_MODAL'}
+                return {"RUNNING_MODAL"}
             # operator is called again, stop displaying
             else:
                 context.window_manager.do_show_tags = False
-                return {'CANCELLED'}
+                return {"CANCELLED"}
         else:
-            self.report({'WARNING'}, "View3D not found, can't run operator")
-            return {'CANCELLED'}
+            self.report({"WARNING"}, "View3D not found, can't run operator")
+            return {"CANCELLED"}
 
     def unregister():
         if bpy.context:
@@ -137,184 +150,215 @@ class GemlabDisplayTags(bpy.types.Operator):
 
 
 class SetVertexTag(bpy.types.Operator):
-    bl_idname      = "gemlab.set_vert_tag"
-    bl_label       = "Set vertex tag"
+    bl_idname = "gemlab.set_vert_tag"
+    bl_label = "Set vertex tag"
     bl_description = "Set vertex tag (for selected vertices)"
 
     @classmethod
     def poll(cls, context):
-        return context.object and (context.object.type == 'MESH') and ('EDIT' in context.object.mode)
+        return (
+            context.object
+            and (context.object.type == "MESH")
+            and ("EDIT" in context.object.mode)
+        )
 
     def execute(self, context):
         bpy.ops.object.editmode_toggle()
-        sc   = context.scene
-        ob   = context.object
+        sc = context.scene
+        ob = context.object
         vids = [v.idx for v in ob.vtags.values()]
         for v in ob.data.vertices:
-            if v.select == True:    # vertex is selected
-                if v.index in vids: # update
+            if v.select == True:  # vertex is selected
+                if v.index in vids:  # update
                     ob.vtags[vids.index(v.index)].tag = sc.gemlab_default_vert_tag
                 else:
-                    new     = ob.vtags.add()
+                    new = ob.vtags.add()
                     new.tag = sc.gemlab_default_vert_tag
                     new.idx = v.index
         bpy.ops.object.editmode_toggle()
-        return {'FINISHED'}
+        return {"FINISHED"}
 
 
 class SetEdgeTag(bpy.types.Operator):
-    bl_idname      = "gemlab.set_edge_tag"
-    bl_label       = "Set edge tag"
+    bl_idname = "gemlab.set_edge_tag"
+    bl_label = "Set edge tag"
     bl_description = "Set edge tag (for selected edges)"
 
     @classmethod
     def poll(cls, context):
-        return context.object and (context.object.type == 'MESH') and ('EDIT' in context.object.mode)
+        return (
+            context.object
+            and (context.object.type == "MESH")
+            and ("EDIT" in context.object.mode)
+        )
 
     def execute(self, context):
         bpy.ops.object.editmode_toggle()
-        sc    = context.scene
-        ob    = context.object
-        ekeys = [(v.v0,v.v1) for v in ob.etags.values()]
+        sc = context.scene
+        ob = context.object
+        ekeys = [(v.v0, v.v1) for v in ob.etags.values()]
         for e in ob.data.edges:
-            if e.select == True:   # edge is selected
-                if e.key in ekeys: # update
+            if e.select == True:  # edge is selected
+                if e.key in ekeys:  # update
                     ob.etags[ekeys.index(e.key)].tag = sc.gemlab_default_edge_tag
                 else:
-                    new     = ob.etags.add()
+                    new = ob.etags.add()
                     new.tag = sc.gemlab_default_edge_tag
-                    new.v0  = e.key[0]
-                    new.v1  = e.key[1]
+                    new.v0 = e.key[0]
+                    new.v1 = e.key[1]
         bpy.ops.object.editmode_toggle()
-        return {'FINISHED'}
+        return {"FINISHED"}
 
 
 class SetCellTag(bpy.types.Operator):
-    bl_idname      = "gemlab.set_cell_tag"
-    bl_label       = "Set cell tag"
+    bl_idname = "gemlab.set_cell_tag"
+    bl_label = "Set cell tag"
     bl_description = "Set cell tag (for selected faces)"
 
     @classmethod
     def poll(cls, context):
-        return context.object and (context.object.type == 'MESH') and ('EDIT' in context.object.mode)
+        return (
+            context.object
+            and (context.object.type == "MESH")
+            and ("EDIT" in context.object.mode)
+        )
 
     def execute(self, context):
         bpy.ops.object.editmode_toggle()
-        sc   = context.scene
-        ob   = context.object
+        sc = context.scene
+        ob = context.object
         cids = [v.idx for v in ob.ctags.values()]
         for p in ob.data.polygons:
-            if p.select == True:    # polygon is selected
-                if p.index in cids: # update
+            if p.select == True:  # polygon is selected
+                if p.index in cids:  # update
                     ob.ctags[cids.index(p.index)].tag = sc.gemlab_default_cell_tag
                 else:
-                    new     = ob.ctags.add()
+                    new = ob.ctags.add()
                     new.tag = sc.gemlab_default_cell_tag
                     new.idx = p.index
         bpy.ops.object.editmode_toggle()
-        return {'FINISHED'}
+        return {"FINISHED"}
 
 
-def write_mesh_to_file(filepath, context, drawmesh=False, ids=False, tags=True, tol=0.0001, flatten=False):
-    sc     = context.scene
-    ob     = context.object
-    me     = ob.data
-    T      = ob.matrix_world.copy()
-    vids   = [v.idx       for v in ob.vtags.values()]
-    ekeys  = [(v.v0,v.v1) for v in ob.etags.values()]
-    cids   = [v.idx       for v in ob.ctags.values()]
-    errors = ''
+def write_mesh_to_file(
+    filepath, context, drawmesh=False, ids=False, tags=True, tol=0.0001, flatten=False
+):
+    sc = context.scene
+    ob = context.object
+    me = ob.data
+    T = ob.matrix_world.copy()
+    vids = [v.idx for v in ob.vtags.values()]
+    ekeys = [(v.v0, v.v1) for v in ob.etags.values()]
+    cids = [v.idx for v in ob.ctags.values()]
+    errors = ""
     # header
-    l = ''
+    l = ""
     # vertices
-    l += 'V=[\n'
+    l += "V=[\n"
     for k, v in enumerate(me.vertices):
         if flatten and abs(v.co[2]) > 0.0:
             v.co[2] = 0.0
         co = T @ v.co
         tg = ob.vtags[vids.index(v.index)].tag if (v.index in vids) else 0
-        l += '  [%d, %d, %.8f, %.8f]' % (k, tg, co[0], co[1])
-        if k<len(me.vertices)-1: l += ','
-        l += '\n'
+        l += "  [%d, %d, %.8f, %.8f]" % (k, tg, co[0], co[1])
+        if k < len(me.vertices) - 1:
+            l += ","
+        l += "\n"
     # cells
-    nc = len(ob.data.polygons) # number of cells
-    l += ']\nC=[\n'
+    nc = len(ob.data.polygons)  # number of cells
+    l += "]\nC=[\n"
     for i, p in enumerate(ob.data.polygons):
-        tg  = ob.ctags[cids.index(p.index)].tag if (p.index in cids) else 0
-        n   = p.normal
-        err = ''
-        if abs(n[0])>tol or abs(n[1])>tol:
-            err += 'Face has normal non-parallel to z'
-        if n[2]<tol:
-            err += 'Face has wrong normal; vertices must be counter-clockwise'
-        l += '  [%d, %d, [' % (i, tg)
-        et = {}              # edge tags
-        nv = len(p.vertices) # number of vertices
+        tg = ob.ctags[cids.index(p.index)].tag if (p.index in cids) else 0
+        n = p.normal
+        err = ""
+        if abs(n[0]) > tol or abs(n[1]) > tol:
+            err += "Face has normal non-parallel to z"
+        if n[2] < tol:
+            err += "Face has wrong normal; vertices must be counter-clockwise"
+        l += "  [%d, %d, [" % (i, tg)
+        et = {}  # edge tags
+        nv = len(p.vertices)  # number of vertices
         for k in range(nv):
-            v0, v1 = ob.data.vertices[p.vertices[k]].index, ob.data.vertices[p.vertices[(k+1)%nv]].index
-            l += '%d' % v0
-            if k<nv-1: l += ','
-            else:      l += ']'
-            ek = (v0,v1) if v0<v1 else (v1,v0) # edge key
+            v0, v1 = (
+                ob.data.vertices[p.vertices[k]].index,
+                ob.data.vertices[p.vertices[(k + 1) % nv]].index,
+            )
+            l += "%d" % v0
+            if k < nv - 1:
+                l += ","
+            else:
+                l += "]"
+            ek = (v0, v1) if v0 < v1 else (v1, v0)  # edge key
             if ek in ekeys:
-                if ob.etags[ekeys.index(ek)].tag >=0: continue
+                if ob.etags[ekeys.index(ek)].tag >= 0:
+                    continue
                 et[k] = ob.etags[ekeys.index(ek)].tag
-        if len(et)>0: l += ', {'
+        if len(et) > 0:
+            l += ", {"
         k = 0
         for idx, tag in et.items():
-            l += '%d:%d' % (idx, tag)
-            if k<len(et)-1: l += ', '
-            else:           l += '}'
+            l += "%d:%d" % (idx, tag)
+            if k < len(et) - 1:
+                l += ", "
+            else:
+                l += "}"
             k += 1
-        if i<nc-1: l += '],'
-        else:      l += ']'
-        if err!='':
-            l += '# ' + err
+        if i < nc - 1:
+            l += "],"
+        else:
+            l += "]"
+        if err != "":
+            l += "# " + err
             errors = err
-        l += '\n'
-    l += ']\n'
+        l += "\n"
+    l += "]\n"
     # footer
     if drawmesh:
-        l += 'd = DrawMesh(V, C)\n'
-        l += 'd.draw(with_ids=%s, with_tags=%s)\n' % (str(ids), str(tags))
-        l += 'd.show()\n'
+        l += "d = DrawMesh(V, C)\n"
+        l += "d.draw(with_ids=%s, with_tags=%s)\n" % (str(ids), str(tags))
+        l += "d.show()\n"
     # write to file
-    f = open(filepath, 'w')
+    f = open(filepath, "w")
     f.write(l)
     f.close()
     return errors
 
 
 class GemlabExporter(bpy.types.Operator):
-    bl_idname      = "gemlab.export_mesh"
-    bl_label       = "Export V and C lists"
+    bl_idname = "gemlab.export_mesh"
+    bl_label = "Export V and C lists"
     bl_description = "Save file with V and C lists"
 
-    filepath: bpy.props.StringProperty(subtype='FILE_PATH',)
+    filepath: bpy.props.StringProperty(
+        subtype="FILE_PATH",
+    )
     check_existing: bpy.props.BoolProperty(
-            name        = "Check Existing",
-            description = "Check and warn on overwriting existing files",
-            default     = True,
-            options     = {'HIDDEN'},)
+        name="Check Existing",
+        description="Check and warn on overwriting existing files",
+        default=True,
+        options={"HIDDEN"},
+    )
 
     @classmethod
     def poll(cls, context):
-        return context.object and (context.object.type == 'MESH')
+        return context.object and (context.object.type == "MESH")
 
     def execute(self, context):
         bpy.ops.object.editmode_toggle()
-        errors = write_mesh_to_file(self.filepath, context,
-                       flatten=context.scene.gemlab_flatten)
-        if errors!='': self.report({'WARNING'}, errors)
+        errors = write_mesh_to_file(
+            self.filepath, context, flatten=context.scene.gemlab_flatten
+        )
+        if errors != "":
+            self.report({"WARNING"}, errors)
         bpy.ops.object.editmode_toggle()
-        return {'FINISHED'}
+        return {"FINISHED"}
 
     def invoke(self, context, event):
         if not self.filepath:
             self.filepath = bpy.path.ensure_ext(bpy.data.filepath, ".py")
         wm = context.window_manager
         wm.fileselect_add(self)
-        return {'RUNNING_MODAL'}
+        return {"RUNNING_MODAL"}
 
 
 class ObjectVertTag(bpy.types.PropertyGroup):
@@ -342,94 +386,77 @@ def init_properties():
     # scene data
     scene = bpy.types.Scene
     scene.gemlab_default_edge_tag = bpy.props.IntProperty(
-        name        ="E",
-        description = "Default Edge Tag",
-        default     = -10,
-        min         = -99,
-        max         = 0)
+        name="E", description="Default Edge Tag", default=-10, min=-99, max=0
+    )
 
     scene.gemlab_default_vert_tag = bpy.props.IntProperty(
-        name        ="V",
-        description = "Default Vertex Tag",
-        default     = -100,
-        min         = -1000,
-        max         = 0)
+        name="V", description="Default Vertex Tag", default=-100, min=-1000, max=0
+    )
 
     scene.gemlab_default_cell_tag = bpy.props.IntProperty(
-        name        ="C",
-        description = "Default Cell Tag",
-        default     = -1,
-        min         = -99,
-        max         = 0)
+        name="C", description="Default Cell Tag", default=-1, min=-99, max=0
+    )
 
     # show tags
     scene.gemlab_show_etag = bpy.props.BoolProperty(
-        name        = "Edge",
-        description = "Display Edge Tags",
-        default     = True)
+        name="Edge", description="Display Edge Tags", default=True
+    )
 
     scene.gemlab_show_vtag = bpy.props.BoolProperty(
-        name        = "Vertex",
-        description = "Display Vertex Tags",
-        default     = True)
+        name="Vertex", description="Display Vertex Tags", default=True
+    )
 
     scene.gemlab_show_ctag = bpy.props.BoolProperty(
-        name        = "Cell",
-        description = "Display Cell Tags",
-        default     = True)
+        name="Cell", description="Display Cell Tags", default=True
+    )
 
     # font sizes
     scene.gemlab_vert_font = bpy.props.IntProperty(
-        name        = "V",
-        description = "Vertex font size",
-        default     = 12,
-        min         = 6,
-        max         = 100)
+        name="V", description="Vertex font size", default=12, min=6, max=100
+    )
 
     scene.gemlab_edge_font = bpy.props.IntProperty(
-        name        = "E",
-        description = "Edge font size",
-        default     = 12,
-        min         = 6,
-        max         = 100)
+        name="E", description="Edge font size", default=12, min=6, max=100
+    )
 
     scene.gemlab_cell_font = bpy.props.IntProperty(
-        name        = "C",
-        description = "Edge font size",
-        default     = 20,
-        min         = 6,
-        max         = 100)
+        name="C", description="Edge font size", default=20, min=6, max=100
+    )
 
     # font colors
     scene.gemlab_vert_color = bpy.props.FloatVectorProperty(
-        name        = "V",
-        description = "Vertex color",
-        default     = (1.0, 0.805, 0.587),
-        min         = 0,
-        max         = 1,
-        subtype     = 'COLOR')
+        name="V",
+        description="Vertex color",
+        default=(1.0, 0.805, 0.587),
+        min=0,
+        max=1,
+        subtype="COLOR",
+    )
 
     scene.gemlab_edge_color = bpy.props.FloatVectorProperty(
-        name        = "E",
-        description = "Edge color",
-        default     = (0.934, 0.764, 1.0),
-        min         = 0,
-        max         = 1,
-        subtype     = 'COLOR')
+        name="E",
+        description="Edge color",
+        default=(0.934, 0.764, 1.0),
+        min=0,
+        max=1,
+        subtype="COLOR",
+    )
 
     scene.gemlab_cell_color = bpy.props.FloatVectorProperty(
-        name        = "C",
-        description = "Cell color",
-        default     = (0.504, 0.786, 1.0),
-        min         = 0,
-        max         = 1,
-        subtype     = 'COLOR')
+        name="C",
+        description="Cell color",
+        default=(0.504, 0.786, 1.0),
+        min=0,
+        max=1,
+        subtype="COLOR",
+    )
 
     # export data
     scene.gemlab_flatten = bpy.props.BoolProperty(
-        name        = "Project z back to 0",
-        description = "Project z coordinates back to 0 (flatten)",
-        default     = False)
+        name="Project z back to 0",
+        description="Project z coordinates back to 0 (flatten)",
+        default=False,
+    )
 
     # do_show_tags is initially always False and it is in the window manager, not the scene
     wm = bpy.types.WindowManager
@@ -437,22 +464,28 @@ def init_properties():
 
 
 class VIEW3D_PT_GemlabPanel(bpy.types.Panel):
-    bl_label       = "Gemlab and Tritet Input File Writer"
-    bl_space_type  = "VIEW_3D"
+    bl_label = "Gemlab and Tritet Input File Writer"
+    bl_space_type = "VIEW_3D"
     bl_region_type = "UI"
-    bl_category    = "Gemlab"
-    bl_idname      = "VIEW3D_PT_GemlabPanel"
+    bl_category = "Gemlab"
+    bl_idname = "VIEW3D_PT_GemlabPanel"
 
     def draw(self, context):
         sc = context.scene
         wm = context.window_manager
-        l  = self.layout
+        l = self.layout
 
         l.label(text="Set tags:")
         c = l.column(align=True)
-        r = c.row(align=True); r.prop(sc, "gemlab_default_vert_tag"); r.operator("gemlab.set_vert_tag")
-        r = c.row(align=True); r.prop(sc, "gemlab_default_edge_tag"); r.operator("gemlab.set_edge_tag")
-        r = c.row(align=True); r.prop(sc, "gemlab_default_cell_tag"); r.operator("gemlab.set_cell_tag")
+        r = c.row(align=True)
+        r.prop(sc, "gemlab_default_vert_tag")
+        r.operator("gemlab.set_vert_tag")
+        r = c.row(align=True)
+        r.prop(sc, "gemlab_default_edge_tag")
+        r.operator("gemlab.set_edge_tag")
+        r = c.row(align=True)
+        r.prop(sc, "gemlab_default_cell_tag")
+        r.operator("gemlab.set_cell_tag")
 
         l.label(text="Show/hide:")
         c = l.column(align=True)
@@ -461,19 +494,25 @@ class VIEW3D_PT_GemlabPanel(bpy.types.Panel):
         r.prop(sc, "gemlab_show_etag")
         r.prop(sc, "gemlab_show_ctag")
         if not wm.do_show_tags:
-            l.operator("view3d.show_tags", text="Start display", icon='PLAY')
+            l.operator("view3d.show_tags", text="Start display", icon="PLAY")
         else:
-            l.operator("view3d.show_tags", text="Stop display", icon='PAUSE')
+            l.operator("view3d.show_tags", text="Stop display", icon="PAUSE")
 
         l.label(text="Font size and colors:")
         c = l.column(align=True)
-        r = c.row(align=True); r.prop(sc, "gemlab_vert_font"); r.prop(sc, "gemlab_vert_color", text="")
-        r = c.row(align=True); r.prop(sc, "gemlab_edge_font"); r.prop(sc, "gemlab_edge_color", text="")
-        r = c.row(align=True); r.prop(sc, "gemlab_cell_font"); r.prop(sc, "gemlab_cell_color", text="")
+        r = c.row(align=True)
+        r.prop(sc, "gemlab_vert_font")
+        r.prop(sc, "gemlab_vert_color", text="")
+        r = c.row(align=True)
+        r.prop(sc, "gemlab_edge_font")
+        r.prop(sc, "gemlab_edge_color", text="")
+        r = c.row(align=True)
+        r.prop(sc, "gemlab_cell_font")
+        r.prop(sc, "gemlab_cell_color", text="")
 
         l.label(text="Export data:")
         l.prop(sc, "gemlab_flatten")
-        l.operator("gemlab.export_mesh",   text="Save .py File")
+        l.operator("gemlab.export_mesh", text="Save .py File")
 
 
 # Classes to register
@@ -499,7 +538,7 @@ def register():
 def unregister():
     for cls in reversed(classes):
         bpy.utils.unregister_class(cls)
-    
+
     # Clean up properties
     del bpy.types.Object.vtags
     del bpy.types.Object.etags
