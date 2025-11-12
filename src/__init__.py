@@ -90,7 +90,6 @@ class GemlabDisplayTags(bpy.types.Operator):
     bl_idname = "view3d.show_tags"
     bl_label = "Show Tags"
     bl_description = "Display tags on top of mesh"
-    last_activity = "NONE"
     _handle = None  # (static/global) will be assigned by invoke
     _timer = None  # (static/global) will be assigned by invoke
 
