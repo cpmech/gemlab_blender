@@ -46,29 +46,29 @@ def draw_callback_px(self, context):
     T = ob.matrix_world.copy()
 
     # vertex tags
-    if len(ob.vtags) > 0 and sc.gemlab_show_vtag:
-        blf.size(font_id, sc.gemlab_vert_font)
-        r, g, b = sc.gemlab_vert_color
+    if len(ob.vtags) > 0 and sc.gemlab_show_vtag:  # type: ignore
+        blf.size(font_id, sc.gemlab_vert_font)  # type: ignore
+        r, g, b = sc.gemlab_vert_color  # type: ignore
         blf.color(font_id, r, g, b, 1.0)
-        for v in ob.vtags.values():
+        for v in ob.vtags.values():  # type: ignore
             if v.tag >= 0:
                 continue
-            pm = ob.data.vertices[v.idx].co
+            pm = ob.data.vertices[v.idx].co  # type: ignore
             co = view3d_utils.location_3d_to_region_2d(reg, r3d, T @ pm)
             if co:
                 blf.position(font_id, co[0], co[1], 0)
                 blf.draw(font_id, "%d" % v.tag)
 
     # edge tags
-    if len(ob.etags) > 0 and sc.gemlab_show_etag:
-        blf.size(font_id, sc.gemlab_edge_font)
-        r, g, b = sc.gemlab_edge_color
+    if len(ob.etags) > 0 and sc.gemlab_show_etag:  # type: ignore
+        blf.size(font_id, sc.gemlab_edge_font)  # type: ignore
+        r, g, b = sc.gemlab_edge_color  # type: ignore
         blf.color(font_id, r, g, b, 1.0)
-        for v in ob.etags.values():
+        for v in ob.etags.values():  # type: ignore
             if v.tag >= 0:
                 continue
-            pa = ob.data.vertices[v.v0].co
-            pb = ob.data.vertices[v.v1].co
+            pa = ob.data.vertices[v.v0].co  # type: ignore
+            pb = ob.data.vertices[v.v1].co  # type: ignore
             pm = (pa + pb) / 2.0
             co = view3d_utils.location_3d_to_region_2d(reg, r3d, T @ pm)
             if co:
@@ -76,17 +76,17 @@ def draw_callback_px(self, context):
                 blf.draw(font_id, "%d" % v.tag)
 
     # cell tags
-    if len(ob.ctags) > 0 and sc.gemlab_show_ctag:
-        blf.size(font_id, sc.gemlab_cell_font)
-        r, g, b = sc.gemlab_cell_color
+    if len(ob.ctags) > 0 and sc.gemlab_show_ctag:  # type: ignore
+        blf.size(font_id, sc.gemlab_cell_font)  # type: ignore
+        r, g, b = sc.gemlab_cell_color  # type: ignore
         blf.color(font_id, r, g, b, 1.0)
-        for v in ob.ctags.values():
+        for v in ob.ctags.values():  # type: ignore
             if v.tag >= 0:
                 continue
-            c = ob.data.polygons[v.idx]
-            pm = ob.data.vertices[c.vertices[0]].co.copy()
+            c = ob.data.polygons[v.idx]  # type: ignore
+            pm = ob.data.vertices[c.vertices[0]].co.copy()  # type: ignore
             for k in range(1, len(c.vertices)):
-                pm += ob.data.vertices[c.vertices[k]].co
+                pm += ob.data.vertices[c.vertices[k]].co  # type: ignore
             pm /= float(len(c.vertices))
             co = view3d_utils.location_3d_to_region_2d(reg, r3d, T @ pm)
             if co:
@@ -159,18 +159,18 @@ class SetVertexTag(bpy.types.Operator):
             and "EDIT" in context.object.mode
         )
 
-    def execute(self, context):
+    def execute(self, context):  # type: ignore
         bpy.ops.object.editmode_toggle()
         sc = context.scene
         ob = context.object
-        vids = [v.idx for v in ob.vtags.values()]
-        for v in ob.data.vertices:
+        vids = [v.idx for v in ob.vtags.values()]  # type: ignore
+        for v in ob.data.vertices:  # type: ignore
             if v.select:  # vertex is selected
                 if v.index in vids:  # update
-                    ob.vtags[vids.index(v.index)].tag = sc.gemlab_default_vert_tag
+                    ob.vtags[vids.index(v.index)].tag = sc.gemlab_default_vert_tag  # type: ignore
                 else:
-                    new = ob.vtags.add()
-                    new.tag = sc.gemlab_default_vert_tag
+                    new = ob.vtags.add()  # type: ignore
+                    new.tag = sc.gemlab_default_vert_tag  # type: ignore
                     new.idx = v.index
         bpy.ops.object.editmode_toggle()
         return {"FINISHED"}
@@ -189,18 +189,18 @@ class SetEdgeTag(bpy.types.Operator):
             and "EDIT" in context.object.mode
         )
 
-    def execute(self, context):
+    def execute(self, context):  # type: ignore
         bpy.ops.object.editmode_toggle()
         sc = context.scene
         ob = context.object
-        ekeys = [(v.v0, v.v1) for v in ob.etags.values()]
-        for e in ob.data.edges:
+        ekeys = [(v.v0, v.v1) for v in ob.etags.values()]  # type: ignore
+        for e in ob.data.edges:  # type: ignore
             if e.select:  # edge is selected
                 if e.key in ekeys:  # update
-                    ob.etags[ekeys.index(e.key)].tag = sc.gemlab_default_edge_tag
+                    ob.etags[ekeys.index(e.key)].tag = sc.gemlab_default_edge_tag  # type: ignore
                 else:
-                    new = ob.etags.add()
-                    new.tag = sc.gemlab_default_edge_tag
+                    new = ob.etags.add()  # type: ignore
+                    new.tag = sc.gemlab_default_edge_tag  # type: ignore
                     new.v0 = e.key[0]
                     new.v1 = e.key[1]
         bpy.ops.object.editmode_toggle()
@@ -220,18 +220,18 @@ class SetCellTag(bpy.types.Operator):
             and "EDIT" in context.object.mode
         )
 
-    def execute(self, context):
+    def execute(self, context):  # type: ignore
         bpy.ops.object.editmode_toggle()
         sc = context.scene
         ob = context.object
-        cids = [v.idx for v in ob.ctags.values()]
-        for p in ob.data.polygons:
+        cids = [v.idx for v in ob.ctags.values()]  # type: ignore
+        for p in ob.data.polygons:  # type: ignore
             if p.select:  # polygon is selected
                 if p.index in cids:  # update
-                    ob.ctags[cids.index(p.index)].tag = sc.gemlab_default_cell_tag
+                    ob.ctags[cids.index(p.index)].tag = sc.gemlab_default_cell_tag  # type: ignore
                 else:
-                    new = ob.ctags.add()
-                    new.tag = sc.gemlab_default_cell_tag
+                    new = ob.ctags.add()  # type: ignore
+                    new.tag = sc.gemlab_default_cell_tag  # type: ignore
                     new.idx = p.index
         bpy.ops.object.editmode_toggle()
         return {"FINISHED"}
@@ -241,30 +241,30 @@ def write_mesh_to_file(
     filepath, context, drawmesh=False, ids=False, tags=True, tol=0.0001, flatten=False
 ):
     ob = context.object
-    me = ob.data
+    me = ob.data  # type: ignore
     T = ob.matrix_world.copy()
-    vids = [v.idx for v in ob.vtags.values()]
-    ekeys = [(v.v0, v.v1) for v in ob.etags.values()]
-    cids = [v.idx for v in ob.ctags.values()]
+    vids = [v.idx for v in ob.vtags.values()]  # type: ignore
+    ekeys = [(v.v0, v.v1) for v in ob.etags.values()]  # type: ignore
+    cids = [v.idx for v in ob.ctags.values()]  # type: ignore
     errors = ""
     # header
     out = ""
     # vertices
     out += "V=[\n"
-    for k, v in enumerate(me.vertices):
+    for k, v in enumerate(me.vertices):  # type: ignore
         if flatten and abs(v.co[2]) > 0.0:
             v.co[2] = 0.0
         co = T @ v.co
-        tg = ob.vtags[vids.index(v.index)].tag if (v.index in vids) else 0
+        tg = ob.vtags[vids.index(v.index)].tag if (v.index in vids) else 0  # type: ignore
         out += "  [%d, %d, %.8f, %.8f]" % (k, tg, co[0], co[1])
-        if k < len(me.vertices) - 1:
+        if k < len(me.vertices) - 1:  # type: ignore
             out += ","
         out += "\n"
     # cells
-    nc = len(ob.data.polygons)  # number of cells
+    nc = len(ob.data.polygons)  # number of cells  # type: ignore
     out += "]\nC=[\n"
-    for i, p in enumerate(ob.data.polygons):
-        tg = ob.ctags[cids.index(p.index)].tag if (p.index in cids) else 0
+    for i, p in enumerate(ob.data.polygons):  # type: ignore
+        tg = ob.ctags[cids.index(p.index)].tag if (p.index in cids) else 0  # type: ignore
         n = p.normal
         err = ""
         if abs(n[0]) > tol or abs(n[1]) > tol:
@@ -276,8 +276,8 @@ def write_mesh_to_file(
         nv = len(p.vertices)  # number of vertices
         for k in range(nv):
             v0, v1 = (
-                ob.data.vertices[p.vertices[k]].index,
-                ob.data.vertices[p.vertices[(k + 1) % nv]].index,
+                ob.data.vertices[p.vertices[k]].index,  # type: ignore
+                ob.data.vertices[p.vertices[(k + 1) % nv]].index,  # type: ignore
             )
             out += "%d" % v0
             if k < nv - 1:
@@ -286,9 +286,9 @@ def write_mesh_to_file(
                 out += "]"
             ek = (v0, v1) if v0 < v1 else (v1, v0)  # edge key
             if ek in ekeys:
-                if ob.etags[ekeys.index(ek)].tag >= 0:
+                if ob.etags[ekeys.index(ek)].tag >= 0:  # type: ignore
                     continue
-                et[k] = ob.etags[ekeys.index(ek)].tag
+                et[k] = ob.etags[ekeys.index(ek)].tag  # type: ignore
         if len(et) > 0:
             out += ", {"
         k = 0
@@ -337,19 +337,21 @@ class GemlabExporter(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return context.object and (context.object.type == "MESH")
+        return context.object is not None and context.object.type == "MESH"
 
-    def execute(self, context):
+    def execute(self, context):  # type: ignore
         bpy.ops.object.editmode_toggle()
         errors = write_mesh_to_file(
-            self.filepath, context, flatten=context.scene.gemlab_flatten
+            self.filepath,
+            context,
+            flatten=context.scene.gemlab_flatten,  # type: ignore
         )
         if errors != "":
             self.report({"WARNING"}, errors)
         bpy.ops.object.editmode_toggle()
         return {"FINISHED"}
 
-    def invoke(self, context, event):
+    def invoke(self, context, event):  # type: ignore
         if not self.filepath:
             self.filepath = bpy.path.ensure_ext(bpy.data.filepath, ".py")
         wm = context.window_manager
