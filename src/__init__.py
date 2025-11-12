@@ -91,16 +91,8 @@ class GemlabDisplayTags(bpy.types.Operator):
     bl_label = "Show Tags"
     bl_description = "Display tags on top of mesh"
     last_activity = "NONE"
-    _handle = None
-    _timer = None
-
-    def handle_add(self, context):
-        GemlabDisplayTags._handle = bpy.types.SpaceView3D.draw_handler_add(
-            draw_callback_px, (self, context), "WINDOW", "POST_PIXEL"
-        )
-        GemlabDisplayTags._timer = context.window_manager.event_timer_add(
-            time_step=0.075, window=context.window
-        )
+    _handle = None  # (static/global) will be assigned by invoke
+    _timer = None  # (static/global) will be assigned by invoke
 
     @staticmethod
     def handle_remove(context):
@@ -113,9 +105,6 @@ class GemlabDisplayTags(bpy.types.Operator):
         GemlabDisplayTags._timer = None
 
     def modal(self, context, event):  # type: ignore
-        # redraw
-        # if context.area:
-        # context.area.tag_redraw()
         # stop script
         if not getattr(context.window_manager, "do_show_tags", False):
             GemlabDisplayTags.handle_remove(context)
@@ -133,11 +122,18 @@ class GemlabDisplayTags(bpy.types.Operator):
             # operator is called for the first time, start everything
             if not getattr(context.window_manager, "do_show_tags", False):
                 setattr(context.window_manager, "do_show_tags", True)
-                GemlabDisplayTags.handle_add(self, context)
+                GemlabDisplayTags._handle = bpy.types.SpaceView3D.draw_handler_add(
+                    draw_callback_px, (self, context), "WINDOW", "POST_PIXEL"
+                )
+                GemlabDisplayTags._timer = context.window_manager.event_timer_add(
+                    time_step=0.075, window=context.window
+                )
+                context.area.tag_redraw()  # refresh
                 return {"RUNNING_MODAL"}
             # operator is called again, stop displaying
             else:
                 setattr(context.window_manager, "do_show_tags", False)
+                context.area.tag_redraw()  # refresh
                 return {"CANCELLED"}
         else:
             self.report({"WARNING"}, "View3D not found, can't run operator")
