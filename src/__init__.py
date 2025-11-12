@@ -251,21 +251,21 @@ def write_mesh_to_file(
     cids = [v.idx for v in ob.ctags.values()]
     errors = ""
     # header
-    l = ""
+    out = ""
     # vertices
-    l += "V=[\n"
+    out += "V=[\n"
     for k, v in enumerate(me.vertices):
         if flatten and abs(v.co[2]) > 0.0:
             v.co[2] = 0.0
         co = T @ v.co
         tg = ob.vtags[vids.index(v.index)].tag if (v.index in vids) else 0
-        l += "  [%d, %d, %.8f, %.8f]" % (k, tg, co[0], co[1])
+        out += "  [%d, %d, %.8f, %.8f]" % (k, tg, co[0], co[1])
         if k < len(me.vertices) - 1:
-            l += ","
-        l += "\n"
+            out += ","
+        out += "\n"
     # cells
     nc = len(ob.data.polygons)  # number of cells
-    l += "]\nC=[\n"
+    out += "]\nC=[\n"
     for i, p in enumerate(ob.data.polygons):
         tg = ob.ctags[cids.index(p.index)].tag if (p.index in cids) else 0
         n = p.normal
@@ -274,7 +274,7 @@ def write_mesh_to_file(
             err += "Face has normal non-parallel to z"
         if n[2] < tol:
             err += "Face has wrong normal; vertices must be counter-clockwise"
-        l += "  [%d, %d, [" % (i, tg)
+        out += "  [%d, %d, [" % (i, tg)
         et = {}  # edge tags
         nv = len(p.vertices)  # number of vertices
         for k in range(nv):
@@ -282,43 +282,43 @@ def write_mesh_to_file(
                 ob.data.vertices[p.vertices[k]].index,
                 ob.data.vertices[p.vertices[(k + 1) % nv]].index,
             )
-            l += "%d" % v0
+            out += "%d" % v0
             if k < nv - 1:
-                l += ","
+                out += ","
             else:
-                l += "]"
+                out += "]"
             ek = (v0, v1) if v0 < v1 else (v1, v0)  # edge key
             if ek in ekeys:
                 if ob.etags[ekeys.index(ek)].tag >= 0:
                     continue
                 et[k] = ob.etags[ekeys.index(ek)].tag
         if len(et) > 0:
-            l += ", {"
+            out += ", {"
         k = 0
         for idx, tag in et.items():
-            l += "%d:%d" % (idx, tag)
+            out += "%d:%d" % (idx, tag)
             if k < len(et) - 1:
-                l += ", "
+                out += ", "
             else:
-                l += "}"
+                out += "}"
             k += 1
         if i < nc - 1:
-            l += "],"
+            out += "],"
         else:
-            l += "]"
+            out += "]"
         if err != "":
-            l += "# " + err
+            out += "# " + err
             errors = err
-        l += "\n"
-    l += "]\n"
+        out += "\n"
+    out += "]\n"
     # footer
     if drawmesh:
-        l += "d = DrawMesh(V, C)\n"
-        l += "d.draw(with_ids=%s, with_tags=%s)\n" % (str(ids), str(tags))
-        l += "d.show()\n"
+        out += "d = DrawMesh(V, C)\n"
+        out += "d.draw(with_ids=%s, with_tags=%s)\n" % (str(ids), str(tags))
+        out += "d.show()\n"
     # write to file
     f = open(filepath, "w")
-    f.write(l)
+    f.write(out)
     f.close()
     return errors
 
@@ -472,10 +472,10 @@ class VIEW3D_PT_GemlabPanel(bpy.types.Panel):
     def draw(self, context):
         sc = context.scene
         wm = context.window_manager
-        l = self.layout
+        lo = self.layout
 
-        l.label(text="Set tags:")
-        c = l.column(align=True)
+        lo.label(text="Set tags:")
+        c = lo.column(align=True)
         r = c.row(align=True)
         r.prop(sc, "gemlab_default_vert_tag")
         r.operator("gemlab.set_vert_tag")
@@ -486,19 +486,19 @@ class VIEW3D_PT_GemlabPanel(bpy.types.Panel):
         r.prop(sc, "gemlab_default_cell_tag")
         r.operator("gemlab.set_cell_tag")
 
-        l.label(text="Show/hide:")
-        c = l.column(align=True)
+        lo.label(text="Show/hide:")
+        c = lo.column(align=True)
         r = c.row(align=True)
         r.prop(sc, "gemlab_show_vtag")
         r.prop(sc, "gemlab_show_etag")
         r.prop(sc, "gemlab_show_ctag")
         if not wm.do_show_tags:
-            l.operator("view3d.show_tags", text="Start display", icon="PLAY")
+            lo.operator("view3d.show_tags", text="Start display", icon="PLAY")
         else:
-            l.operator("view3d.show_tags", text="Stop display", icon="PAUSE")
+            lo.operator("view3d.show_tags", text="Stop display", icon="PAUSE")
 
-        l.label(text="Font size and colors:")
-        c = l.column(align=True)
+        lo.label(text="Font size and colors:")
+        c = lo.column(align=True)
         r = c.row(align=True)
         r.prop(sc, "gemlab_vert_font")
         r.prop(sc, "gemlab_vert_color", text="")
@@ -509,9 +509,9 @@ class VIEW3D_PT_GemlabPanel(bpy.types.Panel):
         r.prop(sc, "gemlab_cell_font")
         r.prop(sc, "gemlab_cell_color", text="")
 
-        l.label(text="Export data:")
-        l.prop(sc, "gemlab_flatten")
-        l.operator("gemlab.export_mesh", text="Save .py File")
+        lo.label(text="Export data:")
+        lo.prop(sc, "gemlab_flatten")
+        lo.operator("gemlab.export_mesh", text="Save .py File")
 
 
 # Classes to register
