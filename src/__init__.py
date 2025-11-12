@@ -154,9 +154,9 @@ class SetVertexTag(bpy.types.Operator):
     @classmethod
     def poll(cls, context):
         return (
-            context.object
-            and (context.object.type == "MESH")
-            and ("EDIT" in context.object.mode)
+            context.object is not None
+            and context.object.type == "MESH"
+            and "EDIT" in context.object.mode
         )
 
     def execute(self, context):
@@ -184,9 +184,9 @@ class SetEdgeTag(bpy.types.Operator):
     @classmethod
     def poll(cls, context):
         return (
-            context.object
-            and (context.object.type == "MESH")
-            and ("EDIT" in context.object.mode)
+            context.object is not None
+            and context.object.type == "MESH"
+            and "EDIT" in context.object.mode
         )
 
     def execute(self, context):
@@ -215,9 +215,9 @@ class SetCellTag(bpy.types.Operator):
     @classmethod
     def poll(cls, context):
         return (
-            context.object
-            and (context.object.type == "MESH")
-            and ("EDIT" in context.object.mode)
+            context.object is not None
+            and context.object.type == "MESH"
+            and "EDIT" in context.object.mode
         )
 
     def execute(self, context):
