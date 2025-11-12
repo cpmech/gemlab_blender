@@ -1,0 +1,10 @@
+schema_version = "1.0.0"
+id = "gemlab_blender"
+version = "0.1.0"
+name = "Gemlab/Tritet"
+tagline = "Tool to write Gemlab (and Tritet) input data files"
+maintainer = "Dorival Pedroso"
+type = "add-on"
+tags = ["Mesh"]
+blender_version_min = "4.2.0"
+license = ["SPDX:GPL-2.0-or-later"]
