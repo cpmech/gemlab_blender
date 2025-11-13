@@ -103,9 +103,7 @@ class GemlabDisplayTags(bpy.types.Operator):
     @staticmethod
     def handle_remove(context):
         if GemlabDisplayTags._handle is not None:
-            bpy.types.SpaceView3D.draw_handler_remove(
-                GemlabDisplayTags._handle, "WINDOW"
-            )
+            bpy.types.SpaceView3D.draw_handler_remove(GemlabDisplayTags._handle, "WINDOW")
         GemlabDisplayTags._handle = None
 
     def modal(self, context, event):
@@ -153,11 +151,7 @@ class SetVertexTag(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return (
-            context.object is not None
-            and context.object.type == "MESH"
-            and "EDIT" in context.object.mode
-        )
+        return context.object is not None and context.object.type == "MESH" and "EDIT" in context.object.mode
 
     def execute(self, context):
         bpy.ops.object.editmode_toggle()
@@ -183,11 +177,7 @@ class SetEdgeTag(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return (
-            context.object is not None
-            and context.object.type == "MESH"
-            and "EDIT" in context.object.mode
-        )
+        return context.object is not None and context.object.type == "MESH" and "EDIT" in context.object.mode
 
     def execute(self, context):
         bpy.ops.object.editmode_toggle()
@@ -214,11 +204,7 @@ class SetCellTag(bpy.types.Operator):
 
     @classmethod
     def poll(cls, context):
-        return (
-            context.object is not None
-            and context.object.type == "MESH"
-            and "EDIT" in context.object.mode
-        )
+        return context.object is not None and context.object.type == "MESH" and "EDIT" in context.object.mode
 
     def execute(self, context):
         bpy.ops.object.editmode_toggle()
@@ -237,93 +223,112 @@ class SetCellTag(bpy.types.Operator):
         return {"FINISHED"}
 
 
-def write_mesh_to_file(
-    filepath, context, drawmesh=False, ids=False, tags=True, tol=0.0001, flatten=False
-):
-    ob = context.object
-    me = ob.data
-    T = ob.matrix_world.copy()
-    vids = [v.idx for v in ob.vtags.values()]
-    ekeys = [(v.v0, v.v1) for v in ob.etags.values()]
-    cids = [v.idx for v in ob.ctags.values()]
+def write_2d_msh_file(operator_instance, filepath, context, tol=0.0001):
+    # get the object
+    obj = context.object
+    if obj is None or obj.type != "MESH":
+        operator_instance.report({"ERROR"}, "No mesh object selected")
+        return {"CANCELLED"}
+
+    # get the mesh data
+    mesh = obj.data
+    if mesh is None:
+        operator_instance.report({"ERROR"}, "No mesh data found")
+        return {"CANCELLED"}
+
+    # check if any z-coordinate is non-zero
+    operator_instance.report({"INFO"}, "Checking z-coordinates of vertices...")
+    for i, v in enumerate(mesh.vertices):
+        co = obj.matrix_world @ v.co
+        if abs(co[2]) > 0.0:
+            operator_instance.report({"ERROR"}, f"Vertex {i} has non-zero z-coordinate ({co[2]})")
+            return {"CANCELLED"}
+
+    # get transformation matrix
+    tt_mat = obj.matrix_world.copy()
+
+    # get ides and tags (markers)
+    vids = [v.idx for v in obj.vtags.values()]
+    ekeys = [(v.v0, v.v1) for v in obj.etags.values()]
+    cids = [v.idx for v in obj.ctags.values()]
+
+    # number of vertices and cells
+    nv = len(mesh.vertices)  # number of vertices
+    nc = len(obj.data.polygons)  # number of cells
+
+    # initialize buffers
+    operator_instance.report({"INFO"}, "Writing to buffer...")
     errors = ""
-    # header
-    out = ""
-    # vertices
-    out += "V=[\n"
-    for k, v in enumerate(me.vertices):
-        if flatten and abs(v.co[2]) > 0.0:
-            v.co[2] = 0.0
-        co = T @ v.co
-        tg = ob.vtags[vids.index(v.index)].tag if (v.index in vids) else 0
-        out += "  [%d, %d, %.8f, %.8f]" % (k, tg, co[0], co[1])
-        if k < len(me.vertices) - 1:
-            out += ","
-        out += "\n"
+    buf = "# header\n"
+    buf += "# ndim npoint ncell\n"
+    buf += "%d %d %d\n\n" % (2, nv, nc)
+
+    # points (vertices)
+    buf += "# points\n"
+    buf += "# id marker x y\n"
+    for i, v in enumerate(mesh.vertices):
+        co = tt_mat @ v.co
+        marker = obj.vtags[vids.index(v.index)].tag if (v.index in vids) else 0
+        buf += f"{i} {marker} {co[0]} {co[1]}\n"
+
     # cells
-    nc = len(ob.data.polygons)  # number of cells
-    out += "]\nC=[\n"
-    for i, p in enumerate(ob.data.polygons):
-        tg = ob.ctags[cids.index(p.index)].tag if (p.index in cids) else 0
+    buf += "\n# cells\n"
+    buf += "# id attribute kind points\n"
+    for i, p in enumerate(obj.data.polygons):
+        # check normal vector
         n = p.normal
-        err = ""
         if abs(n[0]) > tol or abs(n[1]) > tol:
-            err += "Face has normal non-parallel to z"
+            operator_instance.report({"ERROR"}, "Face has normal non-parallel to z")
+            return {"CANCELLED"}
         if n[2] < tol:
-            err += "Face has wrong normal; vertices must be counter-clockwise"
-        out += "  [%d, %d, [" % (i, tg)
-        et = {}  # edge tags
-        nv = len(p.vertices)  # number of vertices
-        for k in range(nv):
+            operator_instance.report({"ERROR"}, "Face has wrong normal; vertices must be counter-clockwise")
+            return {"CANCELLED"}
+
+        # number of nodes (vertices) in the polygon/element
+        nnode = len(p.vertices)
+        if not (nnode == 3 or nnode == 4):
+            operator_instance.report({"ERROR"}, "Only 3-node and 4-node elements are supported")
+            return {"CANCELLED"}
+
+        # detect geometry kind (it must be lin3 or qua4)
+        kind = "lin3" if nnode == 3 else "qua4"
+
+        # cell attribute (marker/tag)
+        attribute = obj.ctags[cids.index(p.index)].tag if (p.index in cids) else 0
+        buf += f"{i} {attribute} {kind}"
+        edge_tags = {}  # edge tags
+        for i in range(nnode):
             v0, v1 = (
-                ob.data.vertices[p.vertices[k]].index,
-                ob.data.vertices[p.vertices[(k + 1) % nv]].index,
+                obj.data.vertices[p.vertices[i]].index,
+                obj.data.vertices[p.vertices[(i + 1) % nnode]].index,
             )
-            out += "%d" % v0
-            if k < nv - 1:
-                out += ","
-            else:
-                out += "]"
-            ek = (v0, v1) if v0 < v1 else (v1, v0)  # edge key
-            if ek in ekeys:
-                if ob.etags[ekeys.index(ek)].tag >= 0:
+            buf += f" {v0}"
+            edge_key = (v0, v1) if v0 < v1 else (v1, v0)
+            if edge_key in ekeys:
+                if obj.etags[ekeys.index(edge_key)].tag >= 0:
                     continue
-                et[k] = ob.etags[ekeys.index(ek)].tag
-        if len(et) > 0:
-            out += ", {"
-        k = 0
-        for idx, tag in et.items():
-            out += "%d:%d" % (idx, tag)
-            if k < len(et) - 1:
-                out += ", "
-            else:
-                out += "}"
-            k += 1
-        if i < nc - 1:
-            out += "],"
-        else:
-            out += "]"
-        if err != "":
-            out += "# " + err
-            errors = err
-        out += "\n"
-    out += "]\n"
-    # footer
-    if drawmesh:
-        out += "d = DrawMesh(V, C)\n"
-        out += "d.draw(with_ids=%s, with_tags=%s)\n" % (str(ids), str(tags))
-        out += "d.show()\n"
-    # write to file
+                edge_tags[i] = obj.etags[ekeys.index(edge_key)].tag
+
+        # edge tags
+        # TODO: implement edge tags in msh file
+
+        # next line
+        buf += "\n"
+
+    # write buffer to file
     f = open(filepath, "w")
-    f.write(out)
+    f.write(buf)
     f.close()
-    return errors
+
+    # success
+    operator_instance.report({"INFO"}, "Successfully wrote to buffer.")
+    return {"FINISHED"}
 
 
 class GemlabExporter(bpy.types.Operator):
     bl_idname = "gemlab.export_mesh"
-    bl_label = "Export V and C lists"
-    bl_description = "Save file with V and C lists"
+    bl_label = "Write 2D msh file"
+    bl_description = "Write 2D msh file. This only works if all z-coordinates are zero."
 
     filepath: bpy.props.StringProperty(
         subtype="FILE_PATH",
@@ -341,19 +346,13 @@ class GemlabExporter(bpy.types.Operator):
 
     def execute(self, context):
         bpy.ops.object.editmode_toggle()
-        errors = write_mesh_to_file(
-            self.filepath,
-            context,
-            flatten=context.scene.gemlab_flatten,
-        )
-        if errors != "":
-            self.report({"WARNING"}, errors)
+        status = write_2d_msh_file(self, self.filepath, context)
         bpy.ops.object.editmode_toggle()
-        return {"FINISHED"}
+        return status
 
     def invoke(self, context, event):
         if not self.filepath:
-            self.filepath = bpy.path.ensure_ext(bpy.data.filepath, ".py")
+            self.filepath = bpy.path.ensure_ext(bpy.data.filepath, ".msh")
         wm = context.window_manager
         wm.fileselect_add(self)
         return {"RUNNING_MODAL"}
@@ -396,30 +395,18 @@ def init_properties():
     )
 
     # show tags
-    scene.gemlab_show_etag = bpy.props.BoolProperty(
-        name="Edge", description="Display Edge Tags", default=True
-    )
+    scene.gemlab_show_etag = bpy.props.BoolProperty(name="Edge", description="Display Edge Tags", default=True)
 
-    scene.gemlab_show_vtag = bpy.props.BoolProperty(
-        name="Vertex", description="Display Vertex Tags", default=True
-    )
+    scene.gemlab_show_vtag = bpy.props.BoolProperty(name="Vertex", description="Display Vertex Tags", default=True)
 
-    scene.gemlab_show_ctag = bpy.props.BoolProperty(
-        name="Cell", description="Display Cell Tags", default=True
-    )
+    scene.gemlab_show_ctag = bpy.props.BoolProperty(name="Cell", description="Display Cell Tags", default=True)
 
     # font sizes
-    scene.gemlab_vert_font = bpy.props.IntProperty(
-        name="V", description="Vertex font size", default=12, min=6, max=100
-    )
+    scene.gemlab_vert_font = bpy.props.IntProperty(name="V", description="Vertex font size", default=12, min=6, max=100)
 
-    scene.gemlab_edge_font = bpy.props.IntProperty(
-        name="E", description="Edge font size", default=12, min=6, max=100
-    )
+    scene.gemlab_edge_font = bpy.props.IntProperty(name="E", description="Edge font size", default=12, min=6, max=100)
 
-    scene.gemlab_cell_font = bpy.props.IntProperty(
-        name="C", description="Edge font size", default=20, min=6, max=100
-    )
+    scene.gemlab_cell_font = bpy.props.IntProperty(name="C", description="Edge font size", default=20, min=6, max=100)
 
     # font colors
     scene.gemlab_vert_color = bpy.props.FloatVectorProperty(
@@ -447,13 +434,6 @@ def init_properties():
         min=0,
         max=1,
         subtype="COLOR",
-    )
-
-    # export data
-    scene.gemlab_flatten = bpy.props.BoolProperty(
-        name="Project z back to 0",
-        description="Project z coordinates back to 0 (flatten)",
-        default=False,
     )
 
     # do_show_tags is initially always False and it is in the window manager, not the scene
@@ -509,8 +489,7 @@ class VIEW3D_PT_GemlabPanel(bpy.types.Panel):
         r.prop(sc, "gemlab_cell_color", text="")
 
         lo.label(text="Export data:")
-        lo.prop(sc, "gemlab_flatten")
-        lo.operator("gemlab.export_mesh", text="Save .py File")
+        lo.operator("gemlab.export_mesh", text="Write 2D msh file")
 
 
 # Classes to register
@@ -553,7 +532,6 @@ def unregister():
     del bpy.types.Scene.gemlab_vert_color
     del bpy.types.Scene.gemlab_edge_color
     del bpy.types.Scene.gemlab_cell_color
-    del bpy.types.Scene.gemlab_flatten
     del bpy.types.WindowManager.do_show_tags
 
 
