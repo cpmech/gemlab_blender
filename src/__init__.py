@@ -256,9 +256,8 @@ def write_2d_msh_file(operator_instance, filepath, context, tol=0.0001):
     nv = len(mesh.vertices)  # number of vertices
     nc = len(obj.data.polygons)  # number of cells
 
-    # initialize buffers
+    # initialize buffer
     operator_instance.report({"INFO"}, "Writing to buffer...")
-    errors = ""
     buf = "# header\n"
     buf += "# ndim npoint ncell\n"
     buf += "%d %d %d\n\n" % (2, nv, nc)
