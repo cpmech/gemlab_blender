@@ -294,16 +294,7 @@ def write_2d_msh_file(operator_instance, filepath, context, tol=0.0001):
         attribute = obj.ctags[cids.index(p.index)].tag if (p.index in cids) else 0
         buf += f"{i} {attribute} {kind}"
         for i in range(nnode):
-            v0, v1 = (
-                obj.data.vertices[p.vertices[i]].index,
-                obj.data.vertices[p.vertices[(i + 1) % nnode]].index,
-            )
-            buf += f" {v0}"
-            # edge_key = (v0, v1) if v0 < v1 else (v1, v0)
-            # if edge_key in ekeys:
-            #     if obj.etags[ekeys.index(edge_key)].tag >= 0:
-            #         continue
-            #     edge_tags[i] = obj.etags[ekeys.index(edge_key)].tag
+            buf += f" {obj.data.vertices[p.vertices[i]].index}"
 
         # next line
         buf += "\n"
