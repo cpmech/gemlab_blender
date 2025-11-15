@@ -244,29 +244,27 @@ def write_2d_msh_file(operator_instance, filepath, context, tol=0.0001):
             operator_instance.report({"ERROR"}, f"Vertex {i} has non-zero z-coordinate ({co[2]})")
             return {"CANCELLED"}
 
-    # get transformation matrix
-    tt_mat = obj.matrix_world.copy()
-
     # get ides and tags (markers)
     vids = [v.idx for v in obj.vtags.values()]
     ekeys = [(v.v0, v.v1) for v in obj.etags.values()]
     cids = [v.idx for v in obj.ctags.values()]
 
     # number of vertices and cells
-    nv = len(mesh.vertices)  # number of vertices
-    nc = len(obj.data.polygons)  # number of cells
+    npoint = len(mesh.vertices)  # total number of vertices
+    ncell = len(obj.data.polygons)  # total number of cells
+    nmarked_edge = len(obj.etags)
 
     # initialize buffer
     operator_instance.report({"INFO"}, "Writing to buffer...")
     buf = "# header\n"
-    buf += "# ndim npoint ncell\n"
-    buf += "%d %d %d\n\n" % (2, nv, nc)
+    buf += "# ndim npoint ncell nmarked_edge nmarked_face\n"
+    buf += f"2 {npoint} {ncell} {nmarked_edge} 0\n\n"
 
     # points (vertices)
     buf += "# points\n"
     buf += "# id marker x y\n"
     for i, v in enumerate(mesh.vertices):
-        co = tt_mat @ v.co
+        co = obj.matrix_world @ v.co
         marker = obj.vtags[vids.index(v.index)].tag if (v.index in vids) else 0
         buf += f"{i} {marker} {co[0]} {co[1]}\n"
 
@@ -295,24 +293,32 @@ def write_2d_msh_file(operator_instance, filepath, context, tol=0.0001):
         # cell attribute (marker/tag)
         attribute = obj.ctags[cids.index(p.index)].tag if (p.index in cids) else 0
         buf += f"{i} {attribute} {kind}"
-        edge_tags = {}  # edge tags
         for i in range(nnode):
             v0, v1 = (
                 obj.data.vertices[p.vertices[i]].index,
                 obj.data.vertices[p.vertices[(i + 1) % nnode]].index,
             )
             buf += f" {v0}"
-            edge_key = (v0, v1) if v0 < v1 else (v1, v0)
-            if edge_key in ekeys:
-                if obj.etags[ekeys.index(edge_key)].tag >= 0:
-                    continue
-                edge_tags[i] = obj.etags[ekeys.index(edge_key)].tag
-
-        # edge tags
-        # TODO: implement edge tags in msh file
+            # edge_key = (v0, v1) if v0 < v1 else (v1, v0)
+            # if edge_key in ekeys:
+            #     if obj.etags[ekeys.index(edge_key)].tag >= 0:
+            #         continue
+            #     edge_tags[i] = obj.etags[ekeys.index(edge_key)].tag
 
         # next line
         buf += "\n"
+
+    # marked edges
+    if nmarked_edge > 0:
+        buf += "\n# marked edges\n"
+        if nnode == 3:
+            buf += "# marker p1 p2 p3\n"
+        else:
+            buf += "# marker p1 p2 p3 p4\n"
+        for edge_key in ekeys:
+            v0, v1 = edge_key
+            marker = obj.etags[ekeys.index(edge_key)].tag
+            buf += f"{marker} {v0} {v1}\n"
 
     # write buffer to file
     f = open(filepath, "w")
