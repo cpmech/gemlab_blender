@@ -237,12 +237,13 @@ def write_2d_msh_file(operator_instance, filepath, context, tol=0.0001):
         return {"CANCELLED"}
 
     # check if any z-coordinate is non-zero
-    operator_instance.report({"INFO"}, "Checking z-coordinates of vertices...")
-    for i, v in enumerate(mesh.vertices):
-        co = obj.matrix_world @ v.co
-        if abs(co[2]) > 0.0:
-            operator_instance.report({"ERROR"}, f"Vertex {i} has non-zero z-coordinate ({co[2]})")
-            return {"CANCELLED"}
+    if context.scene.gemlab_mesh_is_2d:
+        operator_instance.report({"INFO"}, "Checking z-coordinates of vertices...")
+        for i, v in enumerate(mesh.vertices):
+            co = obj.matrix_world @ v.co
+            if abs(co[2]) > 0.0:
+                operator_instance.report({"ERROR"}, f"Vertex {i} has non-zero z-coordinate ({co[2]})")
+                return {"CANCELLED"}
 
     # get ides and tags (markers)
     vids = [v.idx for v in obj.vtags.values()]
@@ -255,31 +256,36 @@ def write_2d_msh_file(operator_instance, filepath, context, tol=0.0001):
     nmarked_edge = len(obj.etags)
 
     # initialize buffer
+    ndim = 2 if context.scene.gemlab_mesh_is_2d else 3
     operator_instance.report({"INFO"}, "Writing to buffer...")
     buf = "# header\n"
     buf += "# ndim npoint ncell nmarked_edge nmarked_face\n"
-    buf += f"2 {npoint} {ncell} {nmarked_edge} 0\n\n"
+    buf += f"{ndim} {npoint} {ncell} {nmarked_edge} 0\n\n"
 
     # points (vertices)
     buf += "# points\n"
-    buf += "# id marker x y\n"
+    buf += "# id marker x y {z}\n"
     for i, v in enumerate(mesh.vertices):
         co = obj.matrix_world @ v.co
         marker = obj.vtags[vids.index(v.index)].tag if (v.index in vids) else 0
-        buf += f"{i} {marker} {co[0]} {co[1]}\n"
+        if context.scene.gemlab_mesh_is_2d:
+            buf += f"{i} {marker} {co[0]} {co[1]}\n"
+        else:
+            buf += f"{i} {marker} {co[0]} {co[1]} {co[2]}\n"
 
     # cells
     buf += "\n# cells\n"
     buf += "# id attribute kind points\n"
     for i, p in enumerate(obj.data.polygons):
         # check normal vector
-        n = p.normal
-        if abs(n[0]) > tol or abs(n[1]) > tol:
-            operator_instance.report({"ERROR"}, "Face has normal non-parallel to z")
-            return {"CANCELLED"}
-        if n[2] < tol:
-            operator_instance.report({"ERROR"}, "Face has wrong normal; vertices must be counter-clockwise")
-            return {"CANCELLED"}
+        if context.scene.gemlab_mesh_is_2d:
+            n = p.normal
+            if abs(n[0]) > tol or abs(n[1]) > tol:
+                operator_instance.report({"ERROR"}, "Face has normal non-parallel to z")
+                return {"CANCELLED"}
+            if n[2] < tol:
+                operator_instance.report({"ERROR"}, "Face has wrong normal; vertices must be counter-clockwise")
+                return {"CANCELLED"}
 
         # number of nodes (vertices) in the polygon/element
         nnode = len(p.vertices)
@@ -432,6 +438,12 @@ def init_properties():
         subtype="COLOR",
     )
 
+    scene.gemlab_mesh_is_2d = bpy.props.BoolProperty(
+        name="Check if the mesh is 2D",
+        description="Checks if the mesh is 2D with all z-coordinates equal to zero before exporting",
+        default=False,
+    )
+
     # do_show_tags is initially always False and it is in the window manager, not the scene
     wm = bpy.types.WindowManager
     wm.do_show_tags = bpy.props.BoolProperty(default=False)
@@ -485,7 +497,8 @@ class VIEW3D_PT_GemlabPanel(bpy.types.Panel):
         r.prop(sc, "gemlab_cell_color", text="")
 
         lo.label(text="Export data:")
-        lo.operator("gemlab.export_mesh", text="Write 2D msh file")
+        lo.prop(sc, "gemlab_mesh_is_2d", text="Mesh must be 2D (z=0)")
+        lo.operator("gemlab.export_mesh", text="Write MSH file")
 
 
 # Classes to register
@@ -528,6 +541,7 @@ def unregister():
     del bpy.types.Scene.gemlab_vert_color
     del bpy.types.Scene.gemlab_edge_color
     del bpy.types.Scene.gemlab_cell_color
+    del bpy.types.Scene.gemlab_mesh_is_2d
     del bpy.types.WindowManager.do_show_tags
 
 
