@@ -287,8 +287,8 @@ def write_2d_msh_file(operator_instance, filepath, context, tol=0.0001):
             operator_instance.report({"ERROR"}, "Only 3-node and 4-node elements are supported")
             return {"CANCELLED"}
 
-        # detect geometry kind (it must be lin3 or qua4)
-        kind = "lin3" if nnode == 3 else "qua4"
+        # detect geometry kind (it must be tri3 or qua4)
+        kind = "tri3" if nnode == 3 else "qua4"
 
         # cell attribute (marker/tag)
         attribute = obj.ctags[cids.index(p.index)].tag if (p.index in cids) else 0
