@@ -329,8 +329,8 @@ def write_2d_msh_file(operator_instance, filepath, context, tol=0.0001):
 
 class GemlabExporter(bpy.types.Operator):
     bl_idname = "gemlab.export_mesh"
-    bl_label = "Write 2D msh file"
-    bl_description = "Write 2D msh file. This only works if all z-coordinates are zero."
+    bl_label = "Save file"
+    bl_description = "Save file"
 
     filepath: bpy.props.StringProperty(
         subtype="FILE_PATH",
