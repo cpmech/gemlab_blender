@@ -51,8 +51,6 @@ def draw_callback_px(self, context):
         r, g, b = sc.gemlab_vert_color
         blf.color(font_id, r, g, b, 1.0)
         for v in ob.vtags.values():
-            if v.tag >= 0:
-                continue
             pm = ob.data.vertices[v.idx].co
             co = view3d_utils.location_3d_to_region_2d(reg, r3d, T @ pm)
             if co:
@@ -65,8 +63,6 @@ def draw_callback_px(self, context):
         r, g, b = sc.gemlab_edge_color
         blf.color(font_id, r, g, b, 1.0)
         for v in ob.etags.values():
-            if v.tag >= 0:
-                continue
             pa = ob.data.vertices[v.v0].co
             pb = ob.data.vertices[v.v1].co
             pm = (pa + pb) / 2.0
@@ -81,8 +77,6 @@ def draw_callback_px(self, context):
         r, g, b = sc.gemlab_cell_color
         blf.color(font_id, r, g, b, 1.0)
         for v in ob.ctags.values():
-            if v.tag >= 0:
-                continue
             c = ob.data.polygons[v.idx]
             pm = ob.data.vertices[c.vertices[0]].co.copy()
             for k in range(1, len(c.vertices)):
@@ -149,6 +143,8 @@ class SetVertexTag(bpy.types.Operator):
     bl_label = "Set vertex tag"
     bl_description = "Set vertex tag (for selected vertices)"
 
+    clear_tags: bpy.props.BoolProperty(name="Clear V tags", default=False)
+
     @classmethod
     def poll(cls, context):
         return context.object is not None and context.object.type == "MESH" and "EDIT" in context.object.mode
@@ -157,15 +153,19 @@ class SetVertexTag(bpy.types.Operator):
         bpy.ops.object.editmode_toggle()
         sc = context.scene
         ob = context.object
-        vids = [v.idx for v in ob.vtags.values()]
+        data = {v.idx: v.tag for v in ob.vtags.values()}
         for v in ob.data.vertices:
-            if v.select:  # vertex is selected
-                if v.index in vids:  # update
-                    ob.vtags[vids.index(v.index)].tag = sc.gemlab_default_vert_tag
+            if v.select:
+                if self.clear_tags:
+                    if v.index in data:
+                        del data[v.index]
                 else:
-                    new = ob.vtags.add()
-                    new.tag = sc.gemlab_default_vert_tag
-                    new.idx = v.index
+                    data[v.index] = sc.gemlab_default_vert_tag
+        ob.vtags.clear()
+        for idx, tag in data.items():
+            prop = ob.vtags.add()
+            prop.idx = idx
+            prop.tag = tag
         bpy.ops.object.editmode_toggle()
         return {"FINISHED"}
 
@@ -175,6 +175,8 @@ class SetEdgeTag(bpy.types.Operator):
     bl_label = "Set edge tag"
     bl_description = "Set edge tag (for selected edges)"
 
+    clear_tags: bpy.props.BoolProperty(name="Clear E tags", default=False)
+
     @classmethod
     def poll(cls, context):
         return context.object is not None and context.object.type == "MESH" and "EDIT" in context.object.mode
@@ -183,16 +185,20 @@ class SetEdgeTag(bpy.types.Operator):
         bpy.ops.object.editmode_toggle()
         sc = context.scene
         ob = context.object
-        ekeys = [(v.v0, v.v1) for v in ob.etags.values()]
+        data = {(v.v0, v.v1): v.tag for v in ob.etags.values()}
         for e in ob.data.edges:
-            if e.select:  # edge is selected
-                if e.key in ekeys:  # update
-                    ob.etags[ekeys.index(e.key)].tag = sc.gemlab_default_edge_tag
+            if e.select:
+                if self.clear_tags:
+                    if e.key in data:
+                        del data[e.key]
                 else:
-                    new = ob.etags.add()
-                    new.tag = sc.gemlab_default_edge_tag
-                    new.v0 = e.key[0]
-                    new.v1 = e.key[1]
+                    data[e.key] = sc.gemlab_default_edge_tag
+        ob.etags.clear()
+        for key, tag in data.items():
+            prop = ob.etags.add()
+            prop.v0 = key[0]
+            prop.v1 = key[1]
+            prop.tag = tag
         bpy.ops.object.editmode_toggle()
         return {"FINISHED"}
 
@@ -202,6 +208,8 @@ class SetCellTag(bpy.types.Operator):
     bl_label = "Set cell tag"
     bl_description = "Set cell tag (for selected faces)"
 
+    clear_tags: bpy.props.BoolProperty(name="Clear C tags", default=False)
+
     @classmethod
     def poll(cls, context):
         return context.object is not None and context.object.type == "MESH" and "EDIT" in context.object.mode
@@ -210,15 +218,19 @@ class SetCellTag(bpy.types.Operator):
         bpy.ops.object.editmode_toggle()
         sc = context.scene
         ob = context.object
-        cids = [v.idx for v in ob.ctags.values()]
+        data = {v.idx: v.tag for v in ob.ctags.values()}
         for p in ob.data.polygons:
-            if p.select:  # polygon is selected
-                if p.index in cids:  # update
-                    ob.ctags[cids.index(p.index)].tag = sc.gemlab_default_cell_tag
+            if p.select:
+                if self.clear_tags:
+                    if p.index in data:
+                        del data[p.index]
                 else:
-                    new = ob.ctags.add()
-                    new.tag = sc.gemlab_default_cell_tag
-                    new.idx = p.index
+                    data[p.index] = sc.gemlab_default_cell_tag
+        ob.ctags.clear()
+        for idx, tag in data.items():
+            prop = ob.ctags.add()
+            prop.idx = idx
+            prop.tag = tag
         bpy.ops.object.editmode_toggle()
         return {"FINISHED"}
 
@@ -384,16 +396,16 @@ def init_properties():
 
     # scene data
     scene = bpy.types.Scene
-    scene.gemlab_default_edge_tag = bpy.props.IntProperty(
-        name="E", description="Default Edge Tag", default=-10, min=-99, max=0
-    )
 
+    # default tags
     scene.gemlab_default_vert_tag = bpy.props.IntProperty(
-        name="V", description="Default Vertex Tag", default=-100, min=-1000, max=0
+        name="V", description="Default Vertex Tag", default=-100, min=-1000, max=1000
     )
-
+    scene.gemlab_default_edge_tag = bpy.props.IntProperty(
+        name="E", description="Default Edge Tag", default=-10, min=-1000, max=1000
+    )
     scene.gemlab_default_cell_tag = bpy.props.IntProperty(
-        name="C", description="Default Cell Tag", default=-1, min=-99, max=0
+        name="C", description="Default Cell Tag", default=-1, min=-1000, max=1000
     )
 
     # show tags
@@ -465,13 +477,26 @@ class VIEW3D_PT_GemlabPanel(bpy.types.Panel):
         c = lo.column(align=True)
         r = c.row(align=True)
         r.prop(sc, "gemlab_default_vert_tag")
-        r.operator("gemlab.set_vert_tag")
+        op_v = r.operator("gemlab.set_vert_tag")
+        op_v.clear_tags = False
         r = c.row(align=True)
         r.prop(sc, "gemlab_default_edge_tag")
-        r.operator("gemlab.set_edge_tag")
+        op_e = r.operator("gemlab.set_edge_tag")
+        op_e.clear_tags = False
         r = c.row(align=True)
         r.prop(sc, "gemlab_default_cell_tag")
-        r.operator("gemlab.set_cell_tag")
+        op_c = r.operator("gemlab.set_cell_tag")
+        op_c.clear_tags = False
+
+        lo.label(text="Clear tags:")
+        c = lo.column(align=True)
+        r = c.row(align=True)
+        op_vv = r.operator("gemlab.set_vert_tag", text="Clear V tags")
+        op_vv.clear_tags = True
+        op_ee = r.operator("gemlab.set_edge_tag", text="Clear E tags")
+        op_ee.clear_tags = True
+        op_cc = r.operator("gemlab.set_cell_tag", text="Clear C tags")
+        op_cc.clear_tags = True
 
         lo.label(text="Show/hide:")
         c = lo.column(align=True)
